@@ -7,7 +7,10 @@ await cp(new URL('./assets/', import.meta.url), new URL('./dist/assets/', import
 await cp(new URL('./vendor/', import.meta.url), new URL('./dist/vendor/', import.meta.url), { recursive: true });
 const versioned = [...files.filter(name=>/\.(js|css)$/.test(name)), 'vendor/xlsx.mjs'];
 const versions = new Map();
-for (const name of versioned) versions.set(name,createHash('sha256').update(await readFile(new URL(name,import.meta.url))).digest('hex').slice(0,12));
+const buildHash=createHash('sha256');
+for (const name of versioned) buildHash.update(name).update(await readFile(new URL(name,import.meta.url)));
+const revision=buildHash.digest('hex').slice(0,12);
+for (const name of versioned) versions.set(name,revision);
 for (const name of ['index.html',...files.filter(name=>name.endsWith('.js'))]) {
   let content = await readFile(new URL(name,import.meta.url),'utf8');
   for (const [asset,version] of versions) {

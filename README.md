@@ -10,7 +10,7 @@ Requires Node.js 22 or later. The browser XLSX reader is vendored, so running th
 npm run dev
 ```
 
-Open http://127.0.0.1:5188. Run `npm test` and `npm run check` to verify the scientific core and JavaScript syntax.
+Open http://127.0.0.1:5188. Run pm test` and pm run check` to verify the scientific core and JavaScript syntax.
 
 ## Scientific scope
 
@@ -30,4 +30,10 @@ Next scientific milestone: regenerate complete reference patterns from pinned or
 
 ## Publishing
 
-The site is published at https://soheil-aghayani.github.io/XRD/ through GitHub Pages. The workflow tests and builds on every push to `main`; `npm run build` copies only the public assets into `dist/`. The pinned SheetJS 0.20.3 browser module and its Apache-2.0 license are included in vendor/. Workbook content is parsed locally; formulas are not recalculated. Development scripts, tests, and screenshots are excluded from the deployed artifact. Public publishing was authorized on 2026-10-09. External scan uploads still require separate user approval.
+The site is published at https://soheil-aghayani.github.io/XRD/ through GitHub Pages. The workflow tests and builds on every push to `main`; pm run build` copies only the public assets into `dist/`. The pinned SheetJS 0.20.3 browser module and its Apache-2.0 license are included in vendor/. Workbook content is parsed locally; formulas are not recalculated. Development scripts, tests, and screenshots are excluded from the deployed artifact. Public publishing was authorized on 2026-10-09. External scan uploads still require separate user approval.
+
+## Inspection and support
+
+Plot controls zoom and pan within the analyzed range without changing matching scores. Pointer inspection shows the nearest entered/extracted peak. The evidence table includes source d-spacing; a user offset changes only the displayed reference angle, not the crystallographic d value. Export matches CSV provides reflection rows; export JSON retains settings, source metadata and limitations.
+
+Support is a compact keyboard-accessible currency selector inside a native modal. Each choice shows the exact network, minimum and receiving address; copy feedback uses Solar icons. No wallet connection or transaction is initiated.
