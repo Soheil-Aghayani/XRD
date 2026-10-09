@@ -1,0 +1,60 @@
+{
+  "builtAt": "2026-10-09T13:11:39.536462+00:00",
+  "versions": {
+    "pymatgen": "2026.9.24",
+    "pymatgen-core": "2026.10.2",
+    "numpy": "2.5.3",
+    "spglib": "2.7.0"
+  },
+  "count": 31,
+  "selection": "Exact mineral/common name, coordinates, ordered structure, ambient conditions when recorded; one representative per requested name",
+  "excluded": [
+    {
+      "name": "Rutile",
+      "id": "9001680",
+      "reason": "No structure parsed for section 1 in CIF.\nOccupancy 1.01 exceeded tolerance."
+    },
+    {
+      "name": "Rutile",
+      "id": "9001681",
+      "reason": "Disordered/partial occupancy structure excluded"
+    },
+    {
+      "name": "Wustite",
+      "reason": "No ordered ambient-condition candidate found"
+    },
+    {
+      "name": "Hydroxyapatite",
+      "reason": "No ordered ambient-condition candidate found"
+    },
+    {
+      "name": "Tridymite",
+      "id": "2104422",
+      "reason": "Missing symmetry or modulated structure requires manual review"
+    },
+    {
+      "name": "Copper",
+      "reason": "Response ended prematurely"
+    },
+    {
+      "name": "Hydroxylapatite",
+      "id": "1011242",
+      "reason": "Missing symmetry or modulated structure requires manual review"
+    },
+    {
+      "name": "Hydroxylapatite",
+      "id": "1100066",
+      "reason": "Missing symmetry or modulated structure requires manual review"
+    },
+    {
+      "name": "Hydroxylapatite",
+      "id": "9001233",
+      "reason": "Disordered/partial occupancy structure excluded"
+    },
+    {
+      "name": "Hydroxylapatite",
+      "id": "9001343",
+      "reason": "Missing symmetry or modulated structure requires manual review"
+    }
+  ]
+}

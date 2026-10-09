@@ -4,3 +4,6 @@ test-results/
 dist/
 preview.png
 published-preview.png
+.venv/
+library/queries/
+__pycache__/

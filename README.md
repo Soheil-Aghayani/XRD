@@ -1,41 +1,46 @@
 # XRD Workbench
 
-A local-first, English diffraction comparison page. Enter peak positions in 2θ or d-spacing, or import a two-column text scan. Inspect four curated COD-derived calcium references and export the complete analysis as JSON.
+English diffraction workbench with local XLSX/text import, peak review, reference plotting, positional matching and JSON/CSV exports.
 
 ## Run
 
-Requires Node.js 22 or later. The browser XLSX reader is vendored, so running the page does not need a package install.
+Node.js 22 or newer. The XLSX reader is vendored; no package installation is needed.
 
 ```sh
 npm run dev
+npm test
+npm run check
+npm run build
 ```
 
-Open http://127.0.0.1:5188. Run pm test` and pm run check` to verify the scientific core and JavaScript syntax.
+Open http://127.0.0.1:5188. GitHub Pages deploys dist/ on pushes to main.
 
-## Scientific scope
+## Reference library
 
-- References are **selected CIF-derived positions**, not complete simulated patterns or measured reference intensities. Reference sticks have equal height intentionally.
-- Four phases only: CaO, calcite, portlandite, calcium chloride hexahydrate. This is not a comprehensive phase identification database.
-- Match scores are reference coverage weighted by positional error, not probabilities or phase fractions. Assignment is greedy and one-to-one; broad tolerances and overlaps can affect results.
-- The user supplies a single wavelength, scan range, tolerance and optional reference offset. No automatic calibration, background correction, refinement or phase quantification.
-- Scan detection uses local maxima above a fraction of the maximum intensity and 0.2° minimum separation. Review peaks; noisy scans and broad peaks require better preprocessing.
-- Text import supports comma, tab or space separated columns, optional recognized header and comment lines. XLSX import supports worksheet selection, column mapping and first-data-row selection, with a preview. Binary RD/RAW and three-column XYE are not supported yet.
-- Scans remain in browser memory until exported by the user. No analytics or external requests run during matching. Source links navigate to COD only when clicked.
+Curated COD structures replace four selected position tables. Each entry includes all reflections retained by pymatgen in the stored 0–179 degree domain at 1.5406 Å: d-spacing, grouped hkl, multiplicity and calculated relative intensity. Complete calculated patterns do not mean an exhaustive materials database or experimentally validated standards.
 
-## Provenance
+Name/formula/ID and required-element filters select structures for matching. A separate calculated intensity cutoff defaults to 5%; set 0 for all stored reflections. Intensities filter and size reference sticks; matching remains positional. Source links, publications, recorded conditions, parser notices, revisions, package versions and SHA-256 hashes are included. Original CC0-1.0 CIFs and retrieval metadata are pinned in library/cif/. The manifest records unsuccessful and excluded candidates.
 
-`references.json` contains source links, CC0-1.0 license, original CIF SHA-256 hashes, reference wavelength and packaging date. Positions were taken from an existing local COD comparison CSV. Source CIF revision, historical retrieval date and calculator version were not recorded and remain unknown. No thesis, sample scans or measured intensities are included.
+## Rebuild
 
-Next scientific milestone: regenerate complete reference patterns from pinned original CIFs using a versioned diffraction calculator, record hkl and calculated intensity, validate with known experimental samples, and expand the licensed reference corpus.
+Python 3.13 with requirements-library.txt was used.
 
-## Publishing
+```sh
+python -m venv .venv
+.venv/Scripts/python -m pip install -r requirements-library.txt
+.venv/Scripts/python scripts/build_library.py --offline
+```
 
-The site is published at https://soheil-aghayani.github.io/XRD/ through GitHub Pages. The workflow tests and builds on every push to `main`; pm run build` copies only the public assets into `dist/`. The pinned SheetJS 0.20.3 browser module and its Apache-2.0 license are included in vendor/. Workbook content is parsed locally; formulas are not recalculated. Development scripts, tests, and screenshots are excluded from the deployed artifact. Public publishing was authorized on 2026-10-09. External scan uploads still require separate user approval.
+Offline mode uses pinned CIFs without network requests. Running without --offline refreshes selection through COD queries; cached query responses are not deployed. Selection uses exact mineral/common names, recorded ambient conditions, coordinates and ordered occupancies. Missing symmetry, missing elements and modulated structures require manual review. Inspect any refreshed selection before publishing. One structural model per included phase cannot represent all compositions, temperatures or polymorphs.
 
-## Inspection and support
+The engine is pymatgen XRDCalculator with symprec=0, intensity scaled to 100 and no supplied Debye–Waller factors. Positions convert by Bragg's law for the user wavelength; intensity stays calculated at 1.5406 Å. Shorter wavelengths can access additional reflections outside the stored domain. Documentation: https://pymatgen.org/pymatgen.analysis.diffraction.html and https://www.crystallography.net/cod/.
 
-Plot controls zoom and pan within the analyzed range without changing matching scores. Pointer inspection shows the nearest entered/extracted peak. The evidence table includes source d-spacing; a user offset changes only the displayed reference angle, not the crystallographic d value. Export matches CSV provides reflection rows; export JSON retains settings, source metadata and limitations.
+## Limits and privacy
 
-Support is a compact keyboard-accessible currency selector inside a native modal. Each choice shows the exact network, minimum and receiving address; copy feedback uses Solar icons. No wallet connection or transaction is initiated.
+The score is reference coverage × (1 − 0.5 × mean absolute angular error / tolerance) × 100, with greedy one-to-one assignment. Scores are not probabilities or phase fractions. Mixtures, overlaps, preferred orientation and instrument effects require expert interpretation. No refinement, calibration or background correction is performed. Synthetic consistency checks do not constitute experimental validation.
 
-Peak review lets users add, edit or remove 2θ peaks and restore the original entered/detected list. Applying edits recalculates candidate matches while retaining raw scan points. JSON exports preserve originalPeaks and peakReview metadata. Unapplied edits are explicitly marked. Evidence summaries flag fewer than three matches, fewer than three available reference lines, and top-two scores within five points; these are transparent review heuristics, not calibrated statistical confidence.
+Local maxima detection uses a height threshold and minimum 0.2 degree separation. Users can review peaks while preserving raw scan rows and original peaks in JSON. XLSX supports worksheet/column/first-row selection. Text supports one/two columns; binary RAW/RD and XYE are not supported.
+
+Matching and workbook processing stay in the browser. No sample scans, thesis files, analytics or measured intensities are bundled or sent to COD. Source links navigate externally only when clicked.
+
+Support uses a keyboard-accessible popup with network/currency selection and address copying. No QR code, wallet connection or transaction. Icons use Solar.

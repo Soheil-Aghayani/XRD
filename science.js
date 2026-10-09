@@ -38,16 +38,22 @@ export function reviewPeaks(text,settings){
 export function describeEvidence(results){
   const top=results[0];
   if(!top||!top.matches.length)return 'No reference positions match within the current tolerance. Review wavelength, peak positions and library coverage.';
-  const parts=[`${top.name} ranks first within this four-phase reference subset.`];
+  const parts=[`${top.name} ranks first among ${results.length} searched reference structures.`];
   if(top.matches.length<3)parts.push('Fewer than three reference lines match; positional evidence is limited.');
   if(results[1]?.matches.length&&top.score-results[1].score<5)parts.push(`The next candidate, ${results[1].name}, is within five score points. The ranking is ambiguous.`);
   if(top.refs.length<3)parts.push('The analyzed range contains fewer than three reference lines for this candidate. A high score may reflect a narrow scan range.');
   if(top.unexplained.length)parts.push(`${top.unexplained.length} input peak${top.unexplained.length===1?' remains':'s remain'} unexplained by this candidate.`);
   return parts.join(' ');
 }
-export function rankPhases(peaks,phases,{wavelength,tolerance,offset,min,max}) {
+export function filterLibrary(phases,query='',elements='') {
+  const required=elements.split(/[\s,]+/).filter(Boolean).map(e=>e.toLowerCase());
+  const terms=query.toLowerCase().trim().split(/\s+/).filter(Boolean);
+  return phases.filter(p=>terms.every(t=>`${p.name} ${p.formula} ${p.id}`.toLowerCase().includes(t))&&required.every(e=>p.elements?.some(v=>v.toLowerCase()===e)));
+}
+export function rankPhases(peaks,phases,{wavelength,tolerance,offset,min,max,referenceThreshold=5}) {
   return phases.map(phase=>{
-    const refs=phase.positions.map(angle=>({original:angle,d:1.5406/(2*Math.sin(angle*Math.PI/360))})).filter(r=>wavelength<2*r.d).map(r=>({...r,x:toAngle(r.d,'d',wavelength)+offset})).filter(r=>r.x>=min&&r.x<=max);
+    const lines=phase.reflections?.filter(r=>r.intensity>=referenceThreshold).map(r=>({...r,original:r.twoTheta}))??phase.positions.map(angle=>({original:angle,d:1.5406/(2*Math.sin(angle*Math.PI/360))}));
+    const refs=lines.filter(r=>wavelength<2*r.d).map(r=>({...r,x:toAngle(r.d,'d',wavelength)+offset})).filter(r=>r.x>=min&&r.x<=max);
     const edges=refs.flatMap((r,ri)=>peaks.map((p,pi)=>({ri,pi,error:p.x-r.x}))).filter(e=>Math.abs(e.error)<=tolerance).sort((a,b)=>Math.abs(a.error)-Math.abs(b.error));
     const usedR=new Set(),usedP=new Set(),matches=[];
     for(const e of edges) if(!usedR.has(e.ri)&&!usedP.has(e.pi)){usedR.add(e.ri);usedP.add(e.pi);matches.push({...e,reference:refs[e.ri].x,observed:peaks[e.pi].x});}
