@@ -28,6 +28,23 @@ export function detectPeaks(rows,threshold=0.1,separation=0.2) {
   const peaks=[];for(const p of candidates) if(peaks.every(q=>Math.abs(q.x-p.x)>=separation)) peaks.push(p);
   return peaks.sort((a,b)=>a.x-b.x);
 }
+export function reviewPeaks(text,settings){
+  if(text.length>5_000_000)throw new Error('Keep reviewed peak data below 5 MB.');
+  const peaks=parseData(text,{unit:'angle',wavelength:settings.wavelength});
+  if(peaks.length>20000)throw new Error('This prototype supports at most 20,000 reviewed peaks.');
+  if(peaks.some(p=>p.x<settings.min||p.x>settings.max))throw new Error('Reviewed peaks must stay within the measured analysis range.');
+  return peaks;
+}
+export function describeEvidence(results){
+  const top=results[0];
+  if(!top||!top.matches.length)return 'No reference positions match within the current tolerance. Review wavelength, peak positions and library coverage.';
+  const parts=[`${top.name} ranks first within this four-phase reference subset.`];
+  if(top.matches.length<3)parts.push('Fewer than three reference lines match; positional evidence is limited.');
+  if(results[1]?.matches.length&&top.score-results[1].score<5)parts.push(`The next candidate, ${results[1].name}, is within five score points. The ranking is ambiguous.`);
+  if(top.refs.length<3)parts.push('The analyzed range contains fewer than three reference lines for this candidate. A high score may reflect a narrow scan range.');
+  if(top.unexplained.length)parts.push(`${top.unexplained.length} input peak${top.unexplained.length===1?' remains':'s remain'} unexplained by this candidate.`);
+  return parts.join(' ');
+}
 export function rankPhases(peaks,phases,{wavelength,tolerance,offset,min,max}) {
   return phases.map(phase=>{
     const refs=phase.positions.map(angle=>({original:angle,d:1.5406/(2*Math.sin(angle*Math.PI/360))})).filter(r=>wavelength<2*r.d).map(r=>({...r,x:toAngle(r.d,'d',wavelength)+offset})).filter(r=>r.x>=min&&r.x<=max);

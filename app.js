@@ -1,11 +1,11 @@
-import {parseData,detectPeaks,rankPhases} from './science.js';
+import {parseData,detectPeaks,rankPhases,reviewPeaks,describeEvidence} from './science.js';
 import {openWorkbook,closeWorkbook} from './workbook.js';
 const $=id=>document.getElementById(id);
 const phases=await fetch('references.json').then(r=>r.json());
 let analysis=null,selected=null,view=null;
 const f=n=>Number(n).toFixed(3);
 $('provenance').innerHTML=phases.map(p=>`<p><a href="${p.source}" target="_blank" rel="noopener">${p.name} · COD ${p.id}</a> · ${p.license} · <a href="${p.cif}" target="_blank" rel="noopener">Original CIF</a><br>SHA-256: <code style="overflow-wrap:anywhere">${p.cifSha256}</code></p>`).join('');
-function invalidate(){analysis=null;selected=null;view=null;$('plot-controls').hidden=true;$('export-csv').disabled=true;$('match-summary').textContent='';$('plot-readout').textContent='';$('export').disabled=true;$('results').innerHTML='<p class="empty-small">Compare references to update results.</p>';$('chart').innerHTML='<div class="empty"><strong>Ready for comparison.</strong></div>';$('point-count').textContent='';}
+function invalidate(){$('peak-editor').hidden=true;$('peak-review-error').textContent='';analysis=null;selected=null;view=null;$('plot-controls').hidden=true;$('export-csv').disabled=true;$('match-summary').textContent='';$('plot-readout').textContent='';$('export').disabled=true;$('results').innerHTML='<p class="empty-small">Compare references to update results.</p>';$('chart').innerHTML='<div class="empty"><strong>Ready for comparison.</strong></div>';$('point-count').textContent='';}
 for(const id of ['data','mode','unit','wavelength','tolerance','offset','min','max','threshold']) $(id).addEventListener('input',invalidate);
 $('mode').addEventListener('change',()=>{$('format').textContent=$('mode').value==='scan'?'Two columns: position, intensity. Comma, tab or space separated.':'One position per line. Optional second column: intensity.';});
 $('file').addEventListener('change',async()=>{
@@ -34,7 +34,8 @@ function compare(){
     const peaks=settings.scan?detectPeaks(visible,settings.threshold):visible;
     if(!peaks.length)throw new Error('No local maxima found. Review the threshold and scan data.');
     const results=rankPhases(peaks,phases,settings);
-    analysis={version:'0.1.0',createdAt:new Date().toISOString(),settings,rows,peaks,results,limitations:['Selected four-phase calcium reference subset, not complete patterns','Scores are not probabilities or phase fractions','No calibration, background correction or instrument profile refinement','Unknown source CIF revision and calculator version']};
+    analysis={version:'0.2.0',createdAt:new Date().toISOString(),settings,rows,peaks,originalPeaks:peaks.map(p=>({...p})),peakReview:{modified:false},results,limitations:['Selected four-phase calcium reference subset, not complete patterns','Scores are not probabilities or phase fractions','No calibration, background correction or instrument profile refinement','Unknown source CIF revision and calculator version']};
+    $('peak-editor').hidden=false;syncPeakEditor();
     selected=results[0].id;view={min:settings.min,max:settings.max};render();$('export').disabled=false;
   }catch(e){invalidate();$('error').textContent=e.message;}
 }
@@ -46,8 +47,24 @@ function render(){
   $('results').querySelectorAll('[data-phase]').forEach(b=>b.addEventListener('click',()=>{selected=b.dataset.phase;render();}));
   draw(results.find(r=>r.id===selected),rows,peaks,settings);
   $('plot-controls').hidden=false;$('export-csv').disabled=false;
-  $('match-summary').textContent=results[0].matches.length?`${results[0].name} has the highest positional score in this reference subset. ${results[0].matches.length<3?'Fewer than three lines match; evidence is limited.':''}`:'No reference positions match within the current tolerance. Review the wavelength, peak list and available reference library.';
+  $('match-summary').textContent=describeEvidence(results);
 }
+function syncPeakEditor(){
+  $('reviewed-peaks').value=analysis.peaks.map(p=>`${p.x}\t${p.y}`).join('\n');
+  $('peak-review-status').textContent=analysis.peakReview.modified?'Matching uses your reviewed peaks. The original scan is preserved.':'Matching uses the original entered or detected peaks.';
+}
+$('reviewed-peaks').addEventListener('input',()=>{$('peak-review-status').textContent='Edits are not applied yet. Matching and exports still use the last applied peaks.';});
+function updateReviewedPeaks(peaks,modified){
+  analysis.peaks=peaks;analysis.results=rankPhases(peaks,phases,analysis.settings);
+  analysis.peakReview={modified,reviewedAt:new Date().toISOString()};
+  selected=analysis.results[0].id;syncPeakEditor();render();
+}
+$('apply-peaks').addEventListener('click',()=>{
+  if(!analysis)return;
+  try{const peaks=reviewPeaks($('reviewed-peaks').value,analysis.settings);updateReviewedPeaks(peaks,true);$('peak-review-error').textContent='';}
+  catch(e){$('peak-review-error').textContent=e.message;}
+});
+$('reset-peaks').addEventListener('click',()=>{if(analysis){updateReviewedPeaks(analysis.originalPeaks.map(p=>({...p})),false);$('peak-review-error').textContent='';}});
 function evidence(r){return `<div class="evidence"><table><thead><tr><th>Reference 2θ</th><th>Input 2θ</th><th>Reference d · Å</th><th>Δ2θ</th><th>Status</th></tr></thead><tbody>${r.refs.map(ref=>{const m=r.matches.find(m=>m.reference===ref.x);return `<tr><td>${f(ref.x)}°</td><td>${m?f(m.observed)+'°':'—'}</td><td>${f(ref.d)}</td><td>${m?f(m.error)+'°':'—'}</td><td>${m?'Matched':'Unmatched'}</td></tr>`;}).join('')}</tbody></table></div><p class="hint">Unexplained input peaks: ${r.unexplained.length?r.unexplained.map(p=>f(p.x)+'°').join(', '):'none within the selected range'}. Selected reference lines lack intensity and hkl metadata; unmatched lines cannot be treated as absent major reflections.</p>`;}
 function draw(phase,rows,peaks,s){
   s={...s,...view};
@@ -58,6 +75,7 @@ function draw(phase,rows,peaks,s){
   for(let i=0;i<=7;i++){const v=s.min+(s.max-s.min)*i/7;svg+=`<line x1="${x(v)}" x2="${x(v)}" y1="${T}" y2="${base+20}" stroke="#edf0f2"/><text x="${x(v)}" y="${H-15}" fill="#74818a" font-size="10" text-anchor="middle">${v.toFixed(1)}</text>`;}
   if(s.scan)svg+=`<polyline points="${visible.map(p=>`${x(p.x)},${y(p.y)}`).join(' ')}" fill="none" stroke="#216450" stroke-width="1.5"/>`;
   else svg+=peaks.filter(p=>p.x>=s.min&&p.x<=s.max).map(p=>`<line x1="${x(p.x)}" x2="${x(p.x)}" y1="${base-25}" y2="${y(p.y)}" stroke="#216450" stroke-width="2"><title>${f(p.x)}° · intensity ${p.y}</title></line>`).join('');
+  if(s.scan)svg+=peaks.filter(p=>p.x>=s.min&&p.x<=s.max).map(p=>`<circle cx="${x(p.x)}" cy="${y(Math.min(p.y,max))}" r="3" fill="#fff" stroke="#216450"><title>Matching peak ${f(p.x)}°</title></circle>`).join('');
   svg+=phase.refs.filter(r=>r.x>=s.min&&r.x<=s.max).map(r=>`<line x1="${x(r.x)}" x2="${x(r.x)}" y1="${base+2}" y2="${base+20}" stroke="#8496b0" stroke-width="2"><title>${phase.name} · ${f(r.x)}°</title></line>`).join('');
   svg+=`<line x1="${L}" x2="${W-R}" y1="${base-25}" y2="${base-25}" stroke="#d4dce0"/><text x="12" y="100" fill="#74818a" font-size="10" transform="rotate(-90 12 100)">${s.scan?'Intensity (relative)':'Entered peak intensity'}</text><text x="${W-20}" y="${H-1}" text-anchor="end" fill="#74818a" font-size="10">2θ · degrees</text></svg>`;
   $('chart').innerHTML=svg;
