@@ -4,7 +4,7 @@ A local-first, English diffraction comparison page. Enter peak positions in 2θ 
 
 ## Run
 
-Requires Node.js 22 or later. No packages need installing.
+Requires Node.js 22 or later. The browser XLSX reader is vendored, so running the page does not need a package install.
 
 ```sh
 npm run dev
@@ -19,7 +19,7 @@ Open http://127.0.0.1:5188. Run `npm test` and `npm run check` to verify the sci
 - Match scores are reference coverage weighted by positional error, not probabilities or phase fractions. Assignment is greedy and one-to-one; broad tolerances and overlaps can affect results.
 - The user supplies a single wavelength, scan range, tolerance and optional reference offset. No automatic calibration, background correction, refinement or phase quantification.
 - Scan detection uses local maxima above a fraction of the maximum intensity and 0.2° minimum separation. Review peaks; noisy scans and broad peaks require better preprocessing.
-- Text import supports comma, tab or space separated columns, optional recognized header and comment lines. Binary RD/RAW, XLSX and three-column XYE are not supported yet.
+- Text import supports comma, tab or space separated columns, optional recognized header and comment lines. XLSX import supports worksheet selection, column mapping and first-data-row selection, with a preview. Binary RD/RAW and three-column XYE are not supported yet.
 - Scans remain in browser memory until exported by the user. No analytics or external requests run during matching. Source links navigate to COD only when clicked.
 
 ## Provenance
@@ -30,5 +30,4 @@ Next scientific milestone: regenerate complete reference patterns from pinned or
 
 ## Publishing
 
-The site is published at https://soheil-aghayani.github.io/XRD/ through GitHub Pages. The workflow tests and builds on every push to `main`; `npm run build` copies only the six public assets into `dist/`. Development scripts, tests, and screenshots are excluded from the deployed artifact. Public publishing was authorized on 2026-10-09. External scan uploads still require separate user approval.
-
+The site is published at https://soheil-aghayani.github.io/XRD/ through GitHub Pages. The workflow tests and builds on every push to `main`; `npm run build` copies only the public assets into `dist/`. The pinned SheetJS 0.20.3 browser module and its Apache-2.0 license are included in vendor/. Workbook content is parsed locally; formulas are not recalculated. Development scripts, tests, and screenshots are excluded from the deployed artifact. Public publishing was authorized on 2026-10-09. External scan uploads still require separate user approval.

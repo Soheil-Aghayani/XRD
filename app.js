@@ -1,13 +1,24 @@
-import {DEMO,parseData,detectPeaks,rankPhases} from './science.js';
+import {parseData,detectPeaks,rankPhases} from './science.js';
+import {openWorkbook,closeWorkbook} from './workbook.js';
 const $=id=>document.getElementById(id);
 const phases=await fetch('references.json').then(r=>r.json());
 let analysis=null,selected=null;
 const f=n=>Number(n).toFixed(3);
 $('provenance').innerHTML=phases.map(p=>`<p><a href="${p.source}" target="_blank" rel="noopener">${p.name} · COD ${p.id}</a> · ${p.license} · <a href="${p.cif}" target="_blank" rel="noopener">Original CIF</a><br>SHA-256: <code style="overflow-wrap:anywhere">${p.cifSha256}</code></p>`).join('');
-function invalidate(){analysis=null;selected=null;$('export').disabled=true;$('results').innerHTML='<p class="empty-small">Inputs changed. Compare references to update results.</p>';$('chart').innerHTML='<div class="empty"><strong>Ready for a new comparison.</strong></div>';$('point-count').textContent='AWAITING COMPARISON';}
+function invalidate(){analysis=null;selected=null;$('export').disabled=true;$('results').innerHTML='<p class="empty-small">Compare references to update results.</p>';$('chart').innerHTML='<div class="empty"><strong>Ready for comparison.</strong></div>';$('point-count').textContent='';}
 for(const id of ['data','mode','unit','wavelength','tolerance','offset','min','max','threshold']) $(id).addEventListener('input',invalidate);
 $('mode').addEventListener('change',()=>{$('format').textContent=$('mode').value==='scan'?'Two columns: position, intensity. Comma, tab or space separated.':'One position per line. Optional second column: intensity.';});
-$('file').addEventListener('change',async()=>{const file=$('file').files[0];if(!file)return;invalidate();if(file.size>5_000_000){$('error').textContent='Please use a text file smaller than 5 MB.';return;}$('data').value=await file.text();$('filename').textContent=file.name;$('mode').value='scan';$('mode').dispatchEvent(new Event('change'));$('error').textContent='';});
+$('file').addEventListener('change',async()=>{
+  const file=$('file').files[0];if(!file)return;invalidate();closeWorkbook();$('error').textContent='';
+  try {
+    if(file.size>5_000_000)throw new Error('Please use a file smaller than 5 MB.');
+    if(/\.xlsx$/i.test(file.name)) await openWorkbook(file,({text,scan})=>{
+      invalidate();$('data').value=text;$('mode').value=scan?'scan':'peaks';$('mode').dispatchEvent(new Event('change'));$('filename').textContent=file.name;$('error').textContent='';
+    });
+    else {$('data').value=await file.text();$('filename').textContent=file.name;$('mode').value='scan';$('mode').dispatchEvent(new Event('change'));}
+  }catch(e){$('error').textContent=e.message;}
+  finally {$('file').value='';}
+});
 function number(id,min,max){const raw=$(id).value;const v=Number(raw);if(!raw.trim()||!Number.isFinite(v)||v<min||v>max)throw new Error(`Check ${$(id).previousElementSibling.textContent}: expected ${min}–${max}.`);return v;}
 function compare(){
   $('error').textContent='';
@@ -28,11 +39,10 @@ function compare(){
   }catch(e){invalidate();$('error').textContent=e.message;}
 }
 $('search').addEventListener('click',compare);
-$('demo').addEventListener('click',()=>{$('data').value=DEMO;$('mode').value='peaks';$('unit').value='angle';$('wavelength').value='1.5406';$('offset').value='0';$('min').value='10';$('max').value='80';$('filename').textContent='Synthetic positions · not an experimental sample';compare();});
 function render(){
   const {results,peaks,rows,settings}=analysis;
   $('point-count').textContent=`${peaks.length} PEAKS · ${rows.length} POINTS`;
-  $('results').innerHTML=results.map(r=>`<article class="candidate ${r.id===selected?'selected':''}"><div class="candidate-head"><div><h3>${r.name}</h3><small><a href="${r.source}" target="_blank" rel="noopener">COD ${r.id}</a> · CIF-derived positions</small></div><div class="score">${r.score.toFixed(1)}<small>MATCH SCORE / 100</small></div><button data-phase="${r.id}" aria-pressed="${r.id===selected}">${r.id===selected?'Selected':'Inspect'}</button></div><div class="metrics"><span>${r.matches.length}/${r.refs.length} reference lines matched</span><span>${r.mean===null?'No match':f(r.mean)+'° mean error'}</span><span>${r.unexplained.length} unexplained input peaks</span></div>${r.id===selected?evidence(r):''}</article>`).join('');
+  $('results').innerHTML=results.map(r=>`<article class="candidate ${r.id===selected?'selected':''}"><div class="candidate-head"><div><h3>${r.name}</h3><small><a href="${r.source}" target="_blank" rel="noopener">COD ${r.id}</a></small></div><div class="score">${r.score.toFixed(1)}<small>MATCH SCORE / 100</small></div><button data-phase="${r.id}" aria-pressed="${r.id===selected}">${r.id===selected?'Selected':'Inspect'}</button></div><div class="metrics"><span>${r.matches.length}/${r.refs.length} reference lines matched</span><span>${r.mean===null?'No match':f(r.mean)+'° mean error'}</span><span>${r.unexplained.length} unexplained input peaks</span></div>${r.id===selected?evidence(r):''}</article>`).join('');
   $('results').querySelectorAll('[data-phase]').forEach(b=>b.addEventListener('click',()=>{selected=b.dataset.phase;render();}));
   draw(results.find(r=>r.id===selected),rows,peaks,settings);
 }

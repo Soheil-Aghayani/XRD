@@ -7,6 +7,15 @@ const options = [
 ];
 const container = document.getElementById('support-options');
 const status = document.getElementById('support-status');
+const dialog = document.getElementById('support-dialog');
+document.getElementById('open-support').addEventListener('click', () => dialog.showModal());
+document.getElementById('close-support').addEventListener('click', () => dialog.close());
+dialog.addEventListener('click', event => {
+  if (event.target !== dialog) return;
+  const bounds = dialog.getBoundingClientRect();
+  if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) dialog.close();
+});
+dialog.addEventListener('close', () => {status.textContent = '';});
 for (const option of options) {
   const card = document.createElement('article');
   card.className = 'support-card';
